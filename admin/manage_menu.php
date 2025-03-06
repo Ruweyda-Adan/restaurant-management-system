@@ -2,12 +2,6 @@
 session_start();
 require_once('../includes/db_connect.php');
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header('Location: dashboard.php');
-    exit;
-}
-
 // Initialize message variables
 $success_message = '';
 $error_message = '';
@@ -158,7 +152,9 @@ while ($row = $categories_result->fetch_assoc()) {
             <nav class="admin-nav">
                 <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
                 <a href="manage_menu.php" class="active"><i class="fas fa-utensils"></i> Manage Menu</a>
-                <a href="manage_orders.php"><i class="fas fa-shopping-cart"></i> Manage Orders</a>
+                <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>"><i class="fas fa-users"></i> Manage Staff</a>
+                <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i> Sales Report</a>
+                <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i> restaurant branding</a>
                 <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </nav>
         </div>

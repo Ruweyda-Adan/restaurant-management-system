@@ -8,7 +8,8 @@ $response = ['success' => false, 'message' => ''];
 // Handles different actions
 if (isset($_POST['action'])) {
     $action = $_POST['action'];
-    
+    error_log("Action received: $action"); 
+
     // Adds item to cart
     if ($action == 'add') {
         $item_id = isset($_POST['item_id']) ? intval($_POST['item_id']) : 0;
@@ -90,8 +91,12 @@ if (isset($_POST['action'])) {
     elseif ($action == 'submit') {
         $customer_name = isset($_POST['customer_name']) ? trim($_POST['customer_name']) : '';
         $order_type = isset($_POST['order_type']) ? trim($_POST['order_type']) : 'Dine-in';
-        $table_number = isset($_SESSION['table_number']) ? intval($_SESSION['table_number']) : 0;
+        $table_number = isset($_POST['table_number']) ? intval($_POST['table_number']) : 0;
         
+        error_log("Customer Name: $customer_name"); 
+        error_log("Order Type: $order_type"); 
+        error_log("Table Number: $table_number"); 
+
         // Validates inputs
         if (empty($customer_name)) {
             $response['message'] = 'Customer name is required';
@@ -109,10 +114,10 @@ if (isset($_POST['action'])) {
             
             try {
                 // Inserts order
-                $order_sql = "INSERT INTO orders (customer_name, order_type, total_price, status) 
-                             VALUES (?, ?, ?, 'Pending')";
+                $order_sql = "INSERT INTO orders (customer_name, order_type, table_number, total_price, status) 
+                             VALUES (?, ?, ?, ?, 'Pending')";
                 $stmt = $conn->prepare($order_sql);
-                $stmt->bind_param("ssd", $customer_name, $order_type, $total_price);
+                $stmt->bind_param("ssid", $customer_name, $order_type, $table_number, $total_price);
                 $stmt->execute();
                 
                 $order_id = $conn->insert_id;
@@ -138,16 +143,13 @@ if (isset($_POST['action'])) {
                 // Commits transaction
                 $conn->commit();
                 
-                // Stores order ID for receipt
-                $_SESSION['last_order_id'] = $order_id;
-                
                 // Clears cart
                 $_SESSION['cart'] = [];
                 
                 $response['success'] = true;
                 $response['message'] = 'Order submitted successfully';
                 $response['order_id'] = $order_id;
-                $response['redirect'] = 'receipt.php?order_id=' . $order_id;
+                $response['redirect'] = 'thank_you.php?order_id=' . $order_id; // Redirect to thank-you page
             } catch (Exception $e) {
                 // Rollback on error
                 $conn->rollback();

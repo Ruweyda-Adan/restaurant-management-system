@@ -15,6 +15,8 @@ $total = 0;
 foreach ($_SESSION['cart'] as $item) {
     $total += $item['subtotal'];
 }
+
+
 ?>
 
 <!DOCTYPE html>
@@ -84,9 +86,15 @@ foreach ($_SESSION['cart'] as $item) {
             <div class="order-form">
                 <h2>Complete Your Order</h2>
                 <form id="checkout-form">
-                    <div class="form-group">
+                    <!-- Dynamic Fields -->
+                    <div class="form-group" id="customer-name-group">
                         <label for="customer-name">Your Name:</label>
                         <input type="text" id="customer-name" name="customer_name" required>
+                    </div>
+                    
+                    <div class="form-group" id="table-number-group" style="display: none;">
+                        <label for="table-number">Table Number:</label>
+                        <input type="number" id="table-number" name="table_number" min="1">
                     </div>
                     
                     <div class="form-group">
@@ -123,13 +131,84 @@ foreach ($_SESSION['cart'] as $item) {
     
     <script src="../script.js"></script>
     <script>
+        // Toggle table number input based on order type
+document.querySelectorAll('input[name="order_type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const tableNumberGroup = document.getElementById('table-number-group');
+        const customerNameGroup = document.getElementById('customer-name-group');
+        if (this.value === 'Dine-in') {
+            tableNumberGroup.style.display = 'block';
+            customerNameGroup.style.display = 'none'; 
+            // Make table number required for dine-in
+            document.getElementById('table-number').setAttribute('required', '');
+            // For dine-in, used a default name based on table
+            document.getElementById('customer-name').value = 'Table Customer';
+            document.getElementById('customer-name').removeAttribute('required');
+        } else {
+            tableNumberGroup.style.display = 'none';
+            customerNameGroup.style.display = 'block';
+            // Make customer name required for takeaway
+            document.getElementById('customer-name').setAttribute('required', '');
+            // Remove required attribute for takeaway
+            document.getElementById('table-number').removeAttribute('required');
+        }
+    });
+});
+
+// Trigger the change event on page load to set initial state
+let initialOrderType = document.querySelector('input[name="order_type"]:checked');
+if (initialOrderType) {
+    initialOrderType.dispatchEvent(new Event('change'));
+}
+
+// Place order
+document.getElementById('checkout-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    console.log("Form submitted"); 
+    
+    const formData = new FormData(this);
+    formData.append('action', 'submit');
+    
+    // If dine-in is selected, validate table number
+    if (document.querySelector('input[name="order_type"]:checked').value === 'Dine-in') {
+        if (!document.getElementById('table-number').value || document.getElementById('table-number').value <= 0) {
+            alert('Please enter a valid table number for dine-in orders.');
+            return;
+        }
+    }
+    
+    console.log("Form data:", Object.fromEntries(formData)); 
+
+    fetch('../pages/order.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log("Response received:", response); 
+        return response.json();
+    })
+    .then(data => {
+        console.log("Data received:", data); 
+        if (data.success) {
+            // Redirect to thank-you page
+            window.location.href = 'thank_you.php?order_id=' + data.order_id;
+        } else {
+            alert(data.message || 'Error processing order');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error); 
+        alert('Something went wrong. Please try again.');
+    });
+});
         // Update quantity
         document.querySelectorAll('.quantity-input').forEach(input => {
             input.addEventListener('change', function() {
                 updateQuantity(this.getAttribute('data-index'), this.value);
             });
         });
-        
+
         // Increase quantity
         document.querySelectorAll('.increase').forEach(button => {
             button.addEventListener('click', function() {
@@ -139,7 +218,7 @@ foreach ($_SESSION['cart'] as $item) {
                 updateQuantity(index, input.value);
             });
         });
-        
+
         // Decrease quantity
         document.querySelectorAll('.decrease').forEach(button => {
             button.addEventListener('click', function() {
@@ -151,39 +230,14 @@ foreach ($_SESSION['cart'] as $item) {
                 }
             });
         });
-        
+
         // Remove item
         document.querySelectorAll('.remove-btn').forEach(button => {
             button.addEventListener('click', function() {
                 removeItem(this.getAttribute('data-index'));
             });
         });
-        
-        // Place order
-        document.getElementById('checkout-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const formData = new FormData(this);
-            formData.append('action', 'submit');
-            
-            fetch('../pages/order.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.redirect) {
-                    window.location.href = data.redirect;
-                } else {
-                    alert(data.message || 'Error processing order');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Something went wrong. Please try again.');
-            });
-        });
-        
+
         function updateQuantity(index, quantity) {
             fetch('../pages/order.php', {
                 method: 'POST',
@@ -204,56 +258,6 @@ foreach ($_SESSION['cart'] as $item) {
             });
         }
 
-        function updateQuantity(index, quantity) {
-    fetch('../pages/order.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=update&cart_index=${index}&quantity=${quantity}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Add animation feedback
-            const row = document.querySelector(`tr[data-index="${index}"]`);
-            row.classList.add('updated');
-            setTimeout(() => {
-                row.classList.remove('updated');
-                location.reload();
-            }, 500);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-
-function removeItem(index) {
-    fetch('../pages/order.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `action=remove&cart_index=${index}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Add animation feedback
-            const row = document.querySelector(`tr[data-index="${index}"]`);
-            row.classList.add('removed');
-            setTimeout(() => {
-                row.remove();
-                location.reload();
-            }, 500);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-        
         function removeItem(index) {
             fetch('../pages/order.php', {
                 method: 'POST',
@@ -277,7 +281,7 @@ function removeItem(index) {
 </body>
 </html>
 <style>
-    /* General Styles */
+  
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f9f9f9;

@@ -2,120 +2,61 @@
 session_start();
 require_once('../includes/db_connect.php');
 
-
-// Check if logged in
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    // Check if login form submitted
-    if (isset($_POST['username']) && isset($_POST['password'])) {
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-        
-        // Simple authentication 
-        if ($username === 'admin' && $password === 'admin123') {
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_username'] = $username;
-            
-            // Redirect to dashboard after successful login
-            header('Location: dashboard.php');
-            exit; 
-        } else {
-            $login_error = "Invalid username or password";
-        }
-    }
-    
-    
-    if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Admin Login</title>
-            <link rel="stylesheet" href="../style.css">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-        </head>
-        <body>
-            <div class="login-container">
-                <div class="login-box">
-                    <div class="login-header">
-                        <h1>Admin Login</h1>
-                        <p>Welcome back! Please log in to access the dashboard.</p>
-                    </div>
-                    <?php if (isset($login_error)): ?>
-                        <div class="login-error">
-                            <i class="fas fa-exclamation-circle"></i> <?php echo $login_error; ?>
-                        </div>
-                    <?php endif; ?>
-                    <form method="post" action="" class="login-form">
-                        <div class="form-group">
-                            <label for="username"><i class="fas fa-user"></i> Username</label>
-                            <input type="text" id="username" name="username" placeholder="Enter your username" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password"><i class="fas fa-lock"></i> Password</label>
-                            <input type="password" id="password" name="password" placeholder="Enter your password" required>
-                        </div>
-                        <button type="submit" class="login-btn">Log In</button>
-                    </form>
-                    <div class="login-footer">
-                        <p>Forgot your password? <a href="#">Reset it here</a></p>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        <?php
-        exit;
-    }
-}
-
-
 // Initialize variables with default values
-$orders_today = ['count' => 0, 'total' => 0];
-$pending_orders = ['count' => 0];
-$recent_orders_result = [];
-$popular_items_result = [];
+$error_message = '';
+$recent_orders = [];
+$menu_items_count = 0;
+$total_sales = 0.0;
+$popular_items = [];
+$staff_count = 0;
 
-// Get stats for dashboard
-try {
-    // Total orders today
-    $today = date('Y-m-d');
-    $orders_today_query = "SELECT COUNT(*) as count, SUM(total_price) as total 
-                           FROM orders 
-                           WHERE DATE(order_time) = '$today'";
-    $orders_today_result = $conn->query($orders_today_query);
-    if ($orders_today_result) {
-        $orders_today = $orders_today_result->fetch_assoc();
+// Secure database queries with prepared statements
+function safeQuery($conn, $query, $params = []) {
+    $stmt = $conn->prepare($query);
+    if ($params) {
+        $types = str_repeat('s', count($params));
+        $stmt->bind_param($types, ...$params);
     }
-
-    // Pending orders
-    $pending_orders_query = "SELECT COUNT(*) as count FROM orders WHERE status = 'Pending'";
-    $pending_orders_result = $conn->query($pending_orders_query);
-    if ($pending_orders_result) {
-        $pending_orders = $pending_orders_result->fetch_assoc();
-    }
-
-    // Recent orders
-    $recent_orders_query = "SELECT o.*, DATE_FORMAT(o.order_time, '%h:%i %p') as formatted_time 
-                           FROM orders o 
-                           ORDER BY o.order_time DESC 
-                           LIMIT 10";
-    $recent_orders_result = $conn->query($recent_orders_query);
-
-    // Popular items
-    $popular_items_query = "SELECT mi.name, SUM(oi.quantity) as total_ordered 
-                           FROM order_items oi 
-                           JOIN menu_items mi ON oi.menu_item_id = mi.id 
-                           GROUP BY oi.menu_item_id 
-                           ORDER BY total_ordered DESC 
-                           LIMIT 5";
-    $popular_items_result = $conn->query($popular_items_query);
-} catch (Exception $e) {
-    // Handle database errors
-    echo "Database error: " . $e->getMessage();
-    exit;
+    $stmt->execute();
+    return $stmt->get_result();
 }
+
+// Fetch dashboard data
+// Count menu items
+$menu_result = safeQuery($conn, "SELECT COUNT(*) as count FROM menu_items");
+$menu_items_count = $menu_result ? $menu_result->fetch_assoc()['count'] : 0;
+
+// Get total sales
+$sales_result = safeQuery($conn, "SELECT SUM(total_price) as total FROM orders WHERE status != 'Cancelled'");
+$total_sales = $sales_result ? ($sales_result->fetch_assoc()['total'] ?? 0) : 0;
+
+// Get recent orders
+$orders_result = safeQuery($conn, "SELECT * FROM orders ORDER BY order_time DESC LIMIT 5");
+if ($orders_result) {
+    while ($row = $orders_result->fetch_assoc()) {
+        $recent_orders[] = $row;
+    }
+}
+
+// Get popular menu items
+$popular_query = "SELECT m.name, COUNT(oi.menu_item_id) as order_count 
+                  FROM order_items oi 
+                  JOIN menu_items m ON oi.menu_item_id = m.id 
+                  JOIN orders o ON oi.order_id = o.id 
+                  WHERE o.status != 'Cancelled' 
+                  GROUP BY oi.menu_item_id 
+                  ORDER BY order_count DESC 
+                  LIMIT 5";
+$popular_result = safeQuery($conn, $popular_query);
+if ($popular_result) {
+    while ($row = $popular_result->fetch_assoc()) {
+        $popular_items[] = $row;
+    }
+}
+
+// Count staff members
+$staff_result = safeQuery($conn, "SELECT COUNT(*) as count FROM admin_users");
+$staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
 ?>
 
 <!DOCTYPE html>
@@ -123,40 +64,336 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Admin Dashboard</title>
-    <link rel="stylesheet" href="../style.css">
+    <title>Admin Dashboard - Restaurant Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+    
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --background-color: #f4f7f6;
+            --text-color: #333;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* Dashboard Container */
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar-toggle-btn {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1100;
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .admin-sidebar-popup {
+            width: 250px;
+            background-color: var(--secondary-color);
+            color: var(--white);
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .admin-sidebar-popup .admin-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .admin-nav {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .admin-nav a {
+            color: var(--white);
+            text-decoration: none;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .admin-nav a:hover,
+        .admin-nav a.active {
+            background-color: var(--primary-color);
+        }
+
+        .admin-nav a i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Admin Content */
+        .admin-content {
+            flex-grow: 1;
+            padding: 20px;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .admin-header h1 {
+            font-size: 28px;
+            color: var(--secondary-color);
+        }
+
+        .admin-user {
+            color: #666;
+        }
+
+        /* Dashboard Stats */
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--primary-color);
+        }
+
+        .stat-info h3 {
+            color: #666;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .stat-info p {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        /* Dashboard Sections */
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .dashboard-section {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .dashboard-section h2 {
+            margin-bottom: 20px;
+            color: var(--secondary-color);
+        }
+
+        /* Recent Orders Table */
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .admin-table th,
+        .admin-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .admin-table th {
+            background-color: #f8f9fa;
+            color: var(--secondary-color);
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #f39c12; color: var(--white); }
+        .status-processing { background: var(--primary-color); color: var(--white); }
+        .status-completed { background: #2ecc71; color: var(--white); }
+        .status-cancelled { background: #e74c3c; color: var(--white); }
+
+        /* Popular Items */
+        .popular-items {
+            margin-top: 15px;
+        }
+
+        .popular-item {
+            margin-bottom: 15px;
+        }
+
+        .popular-item-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .popular-item-bar {
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .sidebar-toggle-btn {
+                display: block;
+            }
+
+            .admin-sidebar-popup {
+                position: fixed;
+                top: 0;
+                left: -250px;
+                height: 100%;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .admin-sidebar-popup.active {
+                left: 0;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                display: none;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+        }
+    </style>
 </head>
 <body>
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar Toggle Button -->
+    <button id="sidebar-toggle" class="sidebar-toggle-btn">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Dashboard Container -->
     <div class="admin-container">
-        <div class="admin-sidebar">
-            <div class="admin-logo">
-                <h2>Restaurant Admin</h2>
+        <!-- Sidebar -->
+        <div class="admin-sidebar-popup" id="sidebar">
+            <div class="admin-sidebar">
+                <div class="admin-logo">
+                    <h2>Restaurant Admin</h2>
+                </div>
+                <nav class="admin-nav">
+                    <a href="dashboard.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="manage_menu.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_menu.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-utensils"></i> Manage Menu
+                    </a>
+                    <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-users"></i> Manage Staff
+                    </a>
+                    <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-chart-bar"></i> Sales Report
+                    </a>
+                    <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>">
+                        <i class="fas fa-palette"></i> Restaurant Branding
+                    </a>
+                </nav>
             </div>
-            <nav class="admin-nav">
-                <a href="dashboard.php" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-                <a href="manage_menu.php"><i class="fas fa-utensils"></i> Manage Menu</a>
-                <a href="manage_orders.php"><i class="fas fa-shopping-cart"></i> Manage Orders</a>
-                <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
-            </nav>
         </div>
         
+        <!-- Main Content -->
         <div class="admin-content">
             <header class="admin-header">
                 <h1>Dashboard</h1>
                 <div class="admin-user">
-                    <span>Welcome, <?php echo $_SESSION['admin_username']; ?></span>
+                    <span>Welcome, Admin</span>
                 </div>
             </header>
             
             <div class="dashboard-stats">
                 <div class="stat-card">
                     <div class="stat-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>Menu Items</h3>
+                        <p><?php echo $menu_items_count; ?></p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon">
                         <i class="fas fa-shopping-cart"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Today's Orders</h3>
-                        <p class="stat-value"><?php echo $orders_today['count']; ?></p>
+                        <h3>Recent Orders</h3>
+                        <p><?php echo count($recent_orders); ?></p>
                     </div>
                 </div>
                 
@@ -165,18 +402,18 @@ try {
                         <i class="fas fa-money-bill-wave"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Today's Revenue</h3>
-                        <p class="stat-value">KSh <?php echo number_format($orders_today['total'] ?? 0, 2); ?></p>
+                        <h3>Total Sales</h3>
+                        <p>KSh <?php echo number_format($total_sales, 2); ?></p>
                     </div>
                 </div>
                 
                 <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-clock"></i>
+                        <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-info">
-                        <h3>Pending Orders</h3>
-                        <p class="stat-value"><?php echo $pending_orders['count']; ?></p>
+                        <h3>Staff Members</h3>
+                        <p><?php echo $staff_count; ?></p>
                     </div>
                 </div>
             </div>
@@ -184,478 +421,91 @@ try {
             <div class="dashboard-sections">
                 <div class="dashboard-section">
                     <h2>Recent Orders</h2>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Order #</th>
-                                <th>Customer</th>
-                                <th>Type</th>
-                                <th>Time</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($recent_orders_result): ?>
-                                <?php while ($order = $recent_orders_result->fetch_assoc()): ?>
+                    <?php if (count($recent_orders) > 0): ?>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recent_orders as $order): ?>
                                     <tr>
-                                        <td><?php echo $order['id']; ?></td>
-                                        <td><?php echo $order['customer_name']; ?></td>
-                                        <td><?php echo $order['order_type']; ?></td>
-                                        <td><?php echo $order['formatted_time']; ?></td>
+                                        <td>#<?php echo htmlspecialchars($order['id']); ?></td>
+                                        <td><?php echo htmlspecialchars($order['customer_name']); ?></td>
                                         <td>KSh <?php echo number_format($order['total_price'], 2); ?></td>
+                                        <td><?php echo date('M d, Y', strtotime($order['order_time'])); ?></td>
                                         <td>
-                                            <span class="status-badge status-<?php echo strtolower($order['status']); ?>">
-                                                <?php echo $order['status']; ?>
+                                            <span class="status-badge status-<?php echo strtolower(htmlspecialchars($order['status'])); ?>">
+                                                <?php echo htmlspecialchars($order['status']); ?>
                                             </span>
                                         </td>
-                                        <td>
-                                            <a href="manage_orders.php?view=<?php echo $order['id']; ?>" class="action-link">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
                                     </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="7">No recent orders found.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                    <a href="manage_orders.php" class="view-all-link">View All Orders</a>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p class="no-data">No recent orders found.</p>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="dashboard-section">
-                    <h2>Popular Items</h2>
-                    <div class="popular-items">
-                        <?php if ($popular_items_result): ?>
-                            <?php while ($item = $popular_items_result->fetch_assoc()): ?>
+                    <h2>Popular Menu Items</h2>
+                    <?php if (count($popular_items) > 0): ?>
+                        <div class="popular-items">
+                            <?php foreach ($popular_items as $index => $item): ?>
                                 <div class="popular-item">
-                                    <span class="item-name"><?php echo $item['name']; ?></span>
-                                    <span class="item-count"><?php echo $item['total_ordered']; ?> ordered</span>
+                                    <div class="popular-item-info">
+                                        <h3><?php echo htmlspecialchars($item['name']); ?></h3>
+                                        <p><?php echo htmlspecialchars($item['order_count']); ?> orders</p>
+                                    </div>
+                                    <div class="popular-item-bar">
+                                        <div class="bar-fill" style="width: <?php 
+                                            echo min(100, ($item['order_count'] / $popular_items[0]['order_count']) * 100); 
+                                        ?>%"></div>
+                                    </div>
                                 </div>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <p>No popular items found.</p>
-                        <?php endif; ?>
-                    </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="no-data">No order data available.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Logout functionality
-        document.getElementById('logout-btn').addEventListener('click', function(e) {
-            e.preventDefault();
-            if (confirm('Are you sure you want to logout?')) {
-                fetch('?logout=1')
-                    .then(() => {
-                        window.location.reload();
-                    });
+    document.addEventListener('DOMContentLoaded', function () {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const toggleBtn = document.getElementById('sidebar-toggle');
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        }
+
+        // Event listeners
+        toggleBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Close sidebar on larger screens
+        function handleResize() {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
             }
-        });
-        
-        // Real-time updates for pending orders (poll every 30 seconds)
-        setInterval(function() {
-            fetch('?get_pending=1')
-                .then(response => response.json())
-                .then(data => {
-                    document.querySelector('.stat-card:nth-child(3) .stat-value').textContent = data.count;
-                });
-        }, 30000);
+        }
+
+        // Add resize listener
+        window.addEventListener('resize', handleResize);
+    });
     </script>
 </body>
 </html>
-
-<?php
-// Handle AJAX logout request
-if (isset($_GET['logout'])) {
-    unset($_SESSION['admin_logged_in']);
-    unset($_SESSION['admin_username']);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-// Handle AJAX pending orders count request
-if (isset($_GET['get_pending'])) {
-    $pending_query = "SELECT COUNT(*) as count FROM orders WHERE status = 'Pending'";
-    $pending_result = $conn->query($pending_query);
-    $pending = $pending_result->fetch_assoc();
-    echo json_encode(['count' => $pending['count']]);
-    exit;
-}
-?>
-<style>
-    /* General Styles */
-body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f4f7f6;
-    margin: 0;
-    padding: 0;
-}
-
-.admin-container {
-    display: flex;
-    min-height: 100vh;
-}
-
-.admin-sidebar {
-    width: 250px;
-    background-color: #2c3e50;
-    color: #fff;
-    padding: 20px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.admin-logo {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.admin-logo h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.admin-nav {
-    display: flex;
-    flex-direction: column;
-}
-
-.admin-nav a {
-    color: #fff;
-    text-decoration: none;
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-}
-
-.admin-nav a:hover {
-    background-color: #34495e;
-}
-
-.admin-nav a.active {
-    background-color: #34495e;
-}
-
-.admin-content {
-    flex-grow: 1;
-    padding: 20px;
-    background-color: #fff;
-}
-
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.admin-header h1 {
-    margin: 0;
-    font-size: 28px;
-    color: #2c3e50;
-}
-
-.admin-user {
-    font-size: 16px;
-    color: #34495e;
-}
-
-.dashboard-stats {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
-.stat-card {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    width: 30%;
-    text-align: center;
-}
-
-.stat-icon {
-    font-size: 30px;
-    color: #3498db;
-    margin-bottom: 10px;
-}
-
-.stat-info h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #2c3e50;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #34495e;
-}
-
-.dashboard-sections {
-    display: flex;
-    flex-direction: column;
-}
-
-.dashboard-section {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-}
-
-.dashboard-section h2 {
-    margin: 0 0 20px;
-    font-size: 22px;
-    color: #2c3e50;
-}
-
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-.admin-table th, .admin-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-.admin-table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.status-badge {
-    padding: 5px 10px;
-    border-radius: 5px;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.status-pending {
-    background-color: #f39c12;
-    color: #fff;
-}
-
-.status-completed {
-    background-color: #2ecc71;
-    color: #fff;
-}
-
-.status-cancelled {
-    background-color: #e74c3c;
-    color: #fff;
-}
-
-.action-link {
-    color: #3498db;
-    text-decoration: none;
-    font-size: 18px;
-}
-
-.view-all-link {
-    display: inline-block;
-    margin-top: 10px;
-    color: #3498db;
-    text-decoration: none;
-    font-size: 16px;
-}
-
-.popular-items {
-    display: flex;
-    flex-direction: column;
-}
-
-.popular-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-}
-
-.popular-item:last-child {
-    border-bottom: none;
-}
-
-.item-name {
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.item-count {
-    color: #7f8c8d;
-}
-
-.error-message {
-    color: #e74c3c;
-    margin-bottom: 15px;
-    text-align: center;
-}
-
-.admin-login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #f4f7f6;
-}
-
-.admin-login-form {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 400px;
-    text-align: center;
-}
-
-.admin-login-form h1 {
-    margin-bottom: 20px;
-    color: #2c3e50;
-}
-
-.form-group {
-    margin-bottom: 15px;
-    text-align: left;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    color: #2c3e50;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 16px;
-}
-
-/* Login Page Styles */
-.login-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background: linear-gradient(135deg, #3498db, #8e44ad);
-    padding: 20px;
-}
-
-.login-box {
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    width: 100%;
-    max-width: 400px;
-    padding: 30px;
-    text-align: center;
-}
-
-.login-header {
-    margin-bottom: 20px;
-}
-
-.login-header h1 {
-    font-size: 24px;
-    color: #2c3e50;
-    margin-bottom: 10px;
-}
-
-.login-header p {
-    font-size: 14px;
-    color: #7f8c8d;
-}
-
-.login-error {
-    background: #f8d7da;
-    color: #721c24;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.login-error i {
-    font-size: 16px;
-}
-
-.login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.form-group {
-    text-align: left;
-}
-
-.form-group label {
-    font-size: 14px;
-    color: #2c3e50;
-    margin-bottom: 5px;
-    display: block;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    transition: border-color 0.3s;
-}
-
-.form-group input:focus {
-    border-color: #3498db;
-    outline: none;
-}
-
-.login-btn {
-    background: #3498db;
-    color: #fff;
-    border: none;
-    padding: 12px;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.login-btn:hover {
-    background: #2980b9;
-}
-
-.login-footer {
-    margin-top: 20px;
-    font-size: 14px;
-    color: #7f8c8d;
-}
-
-.login-footer a {
-    color: #3498db;
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-.login-footer a:hover {
-    color: #2980b9;
-}
-<style/>

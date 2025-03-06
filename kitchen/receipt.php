@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once('../includes/db_connect.php');
+$conn = new mysqli("localhost", "root", "", "restaurant_db");
 
 // Get order ID
 $order_id = isset($_GET['order_id']) ? intval($_GET['order_id']) : 
@@ -44,8 +44,10 @@ $est_max_time = date('h:i A', $order_time + (20 * 60));
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Receipt #<?php echo $order_id; ?></title>
-    <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Your CSS styles here */
+    </style>
 </head>
 <body>
     <div class="receipt-container">
@@ -117,8 +119,8 @@ $est_max_time = date('h:i A', $order_time + (20 * 60));
                     <button class="action-btn print-btn">
                         <i class="fas fa-print"></i> Print Receipt
                     </button>
-                    <a href="menu.php" class="action-btn menu-btn">
-                        <i class="fas fa-utensils"></i> Back to Menu
+                    <a href="index.php" class="action-btn menu-btn">
+                        <i class="fas fa-utensils"></i> Back to Kitchen Staff Panel
                     </a>
                 </div>
             </div>
@@ -136,7 +138,6 @@ $est_max_time = date('h:i A', $order_time + (20 * 60));
     </script>
 </body>
 </html>
-
 
      
 <style>
