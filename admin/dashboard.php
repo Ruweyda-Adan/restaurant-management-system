@@ -1,5 +1,10 @@
 <?php
 session_start();
+
+if (!isset($_SESSION['admin_id'])) {
+    header("Location: admin_login.php");
+    exit();
+}
 require_once('../includes/db_connect.php');
 
 // Initialize variables with default values
@@ -67,7 +72,6 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
     <title>Admin Dashboard - Restaurant Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-    
         * {
             margin: 0;
             padding: 0;
@@ -96,78 +100,77 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
         }
 
         /* Sidebar Styles */
-        .sidebar-toggle-btn {
-            display: none;
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            z-index: 1100;
-            background: var(--primary-color);
-            color: var(--white);
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .admin-sidebar-popup {
-            width: 250px;
-            background-color: var(--secondary-color);
-            color: var(--white);
+        .admin-sidebar {
+            width: 250px; /* Fixed width for the sidebar */
+            height: 100vh;
+            background-color: #2c3e50;
+            color: white;
             padding: 20px;
-            transition: transform 0.3s ease;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            overflow-y: auto;
         }
 
-        .admin-sidebar-popup .admin-logo {
+        .admin-logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+        }
+
+        .admin-logo h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
         }
 
         .admin-nav {
             display: flex;
             flex-direction: column;
+            gap: 10px;
         }
 
         .admin-nav a {
-            color: var(--white);
             text-decoration: none;
-            padding: 10px;
-            margin: 5px 0;
+            color: white;
+            padding: 12px;
             border-radius: 5px;
-            transition: background-color 0.3s ease;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.3s ease-in-out;
         }
 
         .admin-nav a:hover,
         .admin-nav a.active {
-            background-color: var(--primary-color);
+            background-color: #1abc9c;
         }
 
         .admin-nav a i {
-            margin-right: 10px;
-            width: 20px;
-            text-align: center;
+            font-size: 18px;
         }
 
-        /* Admin Content */
+        /* Main Content */
         .admin-content {
+            margin-left: 250px; /* Same as the sidebar width */
             flex-grow: 1;
             padding: 20px;
+            width: calc(100% - 250px); /* Ensure content takes up remaining space */
         }
 
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
 
-        .admin-header h1 {
-            font-size: 28px;
-            color: var(--secondary-color);
-        }
-
-        .admin-user {
-            color: #666;
+            .admin-content {
+                margin-left: 0;
+                width: 100%;
+            }
         }
 
         /* Dashboard Stats */
@@ -293,80 +296,36 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
             background: var(--primary-color);
             border-radius: 4px;
         }
-
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .sidebar-toggle-btn {
-                display: block;
-            }
-
-            .admin-sidebar-popup {
-                position: fixed;
-                top: 0;
-                left: -250px;
-                height: 100%;
-                z-index: 1000;
-                transition: left 0.3s ease;
-            }
-
-            .admin-sidebar-popup.active {
-                left: 0;
-            }
-
-            .sidebar-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.5);
-                z-index: 999;
-                display: none;
-            }
-
-            .sidebar-overlay.active {
-                display: block;
-            }
-        }
     </style>
 </head>
 <body>
-    <!-- Sidebar Overlay -->
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-    <!-- Sidebar Toggle Button -->
-    <button id="sidebar-toggle" class="sidebar-toggle-btn">
-        <i class="fas fa-bars"></i>
-    </button>
-
     <!-- Dashboard Container -->
     <div class="admin-container">
         <!-- Sidebar -->
-        <div class="admin-sidebar-popup" id="sidebar">
-            <div class="admin-sidebar">
-                <div class="admin-logo">
-                    <h2>Restaurant Admin</h2>
-                </div>
-                <nav class="admin-nav">
-                    <a href="dashboard.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a>
-                    <a href="manage_menu.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_menu.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-utensils"></i> Manage Menu
-                    </a>
-                    <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-users"></i> Manage Staff
-                    </a>
-                    <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-chart-bar"></i> Sales Report
-                    </a>
-                    <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-palette"></i> Restaurant Branding
-                    </a>
-                </nav>
+        <div class="admin-sidebar">
+            <div class="admin-logo">
+                <h2>Restaurant Admin</h2>
             </div>
+            <nav class="admin-nav">
+                <a href="dashboard.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="manage_menu.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_menu.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-utensils"></i> Manage Menu
+                </a>
+                <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-users"></i> Manage Staff
+                </a>
+                <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-chart-bar"></i> Sales Report
+                </a>
+                <a href="#" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                    <a href="admin_change_credentials.php" class="btn btn-primary">Change Credentials</a>
+                </a>
+            </nav>
         </div>
-        
+
         <!-- Main Content -->
         <div class="admin-content">
             <header class="admin-header">
@@ -375,7 +334,8 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                     <span>Welcome, Admin</span>
                 </div>
             </header>
-            
+
+            <!-- Dashboard Stats -->
             <div class="dashboard-stats">
                 <div class="stat-card">
                     <div class="stat-icon">
@@ -386,7 +346,7 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                         <p><?php echo $menu_items_count; ?></p>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-shopping-cart"></i>
@@ -396,7 +356,7 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                         <p><?php echo count($recent_orders); ?></p>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-money-bill-wave"></i>
@@ -406,7 +366,7 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                         <p>KSh <?php echo number_format($total_sales, 2); ?></p>
                     </div>
                 </div>
-                
+
                 <div class="stat-card">
                     <div class="stat-icon">
                         <i class="fas fa-users"></i>
@@ -417,7 +377,8 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                     </div>
                 </div>
             </div>
-            
+
+            <!-- Dashboard Sections -->
             <div class="dashboard-sections">
                 <div class="dashboard-section">
                     <h2>Recent Orders</h2>
@@ -452,7 +413,7 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
                         <p class="no-data">No recent orders found.</p>
                     <?php endif; ?>
                 </div>
-                
+
                 <div class="dashboard-section">
                     <h2>Popular Menu Items</h2>
                     <?php if (count($popular_items) > 0): ?>
@@ -480,32 +441,12 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        const toggleBtn = document.getElementById('sidebar-toggle');
-
-        // Toggle sidebar
-        function toggleSidebar() {
-            sidebar.classList.toggle('active');
-            sidebarOverlay.classList.toggle('active');
-        }
-
-        // Event listeners
-        toggleBtn.addEventListener('click', toggleSidebar);
-        sidebarOverlay.addEventListener('click', toggleSidebar);
-
-        // Close sidebar on larger screens
-        function handleResize() {
-            if (window.innerWidth >= 768) {
-                sidebar.classList.remove('active');
-                sidebarOverlay.classList.remove('active');
+        document.getElementById('logout-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to logout?')) {
+                window.location.href = 'admin_logout.php';
             }
-        }
-
-        // Add resize listener
-        window.addEventListener('resize', handleResize);
-    });
+        });
     </script>
 </body>
 </html>

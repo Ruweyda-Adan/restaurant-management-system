@@ -368,9 +368,7 @@ $conn->close();
             <i class="fas fa-chart-bar"></i> <span>Sales Report</span>
         </a>
         
-        <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>">
-            <i class="fas fa-palette"></i> <span>Restaurant Branding</span>
-        </a>
+        
         <a href="#" id="logout-btn">
             <i class="fas fa-sign-out-alt"></i> <span>Logout</span>
         </a>
@@ -514,7 +512,7 @@ $conn->close();
     document.getElementById('logout-btn').addEventListener('click', function(e) {
         e.preventDefault();
         if(confirm('Are you sure you want to logout?')) {
-            window.location.href = 'logout.php';
+            window.location.href = 'admin_logout.php';
         }
     });
 </script>

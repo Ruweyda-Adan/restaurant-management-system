@@ -1,5 +1,12 @@
 <?php
 session_start();
+
+// Redirect to login if not logged in
+if (!isset($_SESSION['kitchen_staff_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 $conn = new mysqli("localhost", "root", "", "restaurant_db");
 
 // Fetch all orders with latest first
@@ -273,7 +280,31 @@ $total_revenue = $conn->query("SELECT SUM(total_price) as total FROM orders")->f
             .dashboard-stats {
                 grid-template-columns: 1fr;
             }
-            
+            .btn {
+    padding: 8px 15px;
+    border-radius: 25px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background-color 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #2196f3;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background-color: #1e88e5;
+}
+
+.btn-danger {
+    background-color: #ff4757;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background-color: #ff6b81;
+}
             header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -293,11 +324,12 @@ $total_revenue = $conn->query("SELECT SUM(total_price) as total FROM orders")->f
             <div class="logo">Restaurant Management</div>
             <div class="user-nav">
                 <div class="user-info">
-                    <i class="fas fa-user-circle"></i> Staff Panel
+                    
                 </div>
                 <a href="logout.php" class="btn btn-danger">Logout</a>
-
+                <a href="change_password.php" class="btn btn-primary">Change Password</a>
             </div>
+        
         </header>
         
         <div class="dashboard-stats">

@@ -142,20 +142,387 @@ while ($row = $categories_result->fetch_assoc()) {
     <title>Manage Menu - Restaurant Admin</title>
     <link rel="stylesheet" href="../style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7f6;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles - Updated to match dashboard.php */
+        .admin-sidebar {
+            width: 250px; /* Fixed width for the sidebar */
+            height: 100vh;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .admin-logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .admin-logo h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .admin-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .admin-nav a {
+            text-decoration: none;
+            color: white;
+            padding: 12px;
+            border-radius: 5px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.3s ease-in-out;
+        }
+
+        .admin-nav a:hover,
+        .admin-nav a.active {
+            background-color: #1abc9c;
+        }
+
+        .admin-nav a i {
+            font-size: 18px;
+        }
+
+        /* Responsive Adjustments for Sidebar */
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .admin-content {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
+        
+        /* Content Styles - Adjusted to work with fixed sidebar */
+        .admin-content {
+            margin-left: 250px; /* Same as the sidebar width */
+            flex-grow: 1;
+            padding: 20px;
+            width: calc(100% - 250px); /* Ensure content takes up remaining space */
+            background-color: #fff;
+        }
+        
+        /* Keep all other existing styles */
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .admin-header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #2c3e50;
+        }
+
+        .primary-btn {
+            background: #3498db;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .primary-btn:hover {
+            background: #2980b9;
+        }
+
+        .secondary-btn {
+            background: #7f8c8d;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .secondary-btn:hover {
+            background: #666;
+        }
+
+        .danger-btn {
+            background: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .danger-btn:hover {
+            background: #c0392b;
+        }
+
+        .alert {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Menu Form */
+        #menu-form-container {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        #menu-form-container.show {
+            display: block;
+        }
+
+        .menu-form {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .menu-form h2 {
+            margin: 0 0 20px;
+            font-size: 22px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .current-image {
+            margin-top: 10px;
+        }
+
+        .current-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Menu Items Table */
+        .menu-items-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .admin-table th,
+        .admin-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .admin-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .menu-image-cell img {
+            max-width: 100px;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .no-image {
+            background: #f4f7f6;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            color: #7f8c8d;
+        }
+
+        .description-cell {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .action-link {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 18px;
+            margin-right: 10px;
+            transition: color 0.3s;
+        }
+
+        .action-link.edit:hover {
+            color: #2980b9;
+        }
+
+        .action-link.delete {
+            color: #e74c3c;
+        }
+
+        .action-link.delete:hover {
+            color: #c0392b;
+        }
+
+        .no-items {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+        }
+
+        /* Delete Confirmation Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .modal-content h2 {
+            margin: 0 0 20px;
+            font-size: 22px;
+            color: #2c3e50;
+        }
+
+        .modal-content p {
+            margin: 0 0 20px;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-container">
+        <!-- Updated Sidebar to match dashboard.php -->
         <div class="admin-sidebar">
             <div class="admin-logo">
                 <h2>Restaurant Admin</h2>
             </div>
             <nav class="admin-nav">
-                <a href="dashboard.php"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-                <a href="manage_menu.php" class="active"><i class="fas fa-utensils"></i> Manage Menu</a>
-                <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>"><i class="fas fa-users"></i> Manage Staff</a>
-                <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i> Sales Report</a>
-                <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i> restaurant branding</a>
-                <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                <a href="dashboard.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'dashboard.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="manage_menu.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_menu.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-utensils"></i> Manage Menu
+                </a>
+                <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-users"></i> Manage Staff
+                </a>
+                <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>">
+                    <i class="fas fa-chart-bar"></i> Sales Report
+                </a>
+                <a href="#" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
             </nav>
         </div>
         
@@ -329,339 +696,9 @@ while ($row = $categories_result->fetch_assoc()) {
         document.getElementById('logout-btn').addEventListener('click', function(e) {
             e.preventDefault();
             if (confirm('Are you sure you want to logout?')) {
-                fetch('dashboard.php?logout=1')
-                    .then(() => {
-                        window.location.href = 'dashboard.php';
-                    });
+                window.location.href = 'admin_logout.php';
             }
         });
     </script>
 </body>
 </html>
-<style>
-    /* General Styles */
-body {
-    font-family: 'Arial', sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f4f7f6;
-}
-
-.admin-container {
-    display: flex;
-    min-height: 100vh;
-}
-
-.admin-sidebar {
-    width: 250px;
-    background-color: #2c3e50;
-    color: #fff;
-    padding: 20px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-}
-
-.admin-logo {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.admin-logo h2 {
-    margin: 0;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-.admin-nav {
-    display: flex;
-    flex-direction: column;
-}
-
-.admin-nav a {
-    color: #fff;
-    text-decoration: none;
-    padding: 10px;
-    margin: 5px 0;
-    border-radius: 5px;
-    transition: background-color 0.3s;
-}
-
-.admin-nav a:hover {
-    background-color: #34495e;
-}
-
-.admin-nav a.active {
-    background-color: #34495e;
-}
-
-.admin-content {
-    flex-grow: 1;
-    padding: 20px;
-    background-color: #fff;
-}
-
-.admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.admin-header h1 {
-    margin: 0;
-    font-size: 28px;
-    color: #2c3e50;
-}
-
-.primary-btn {
-    background: #3498db;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.primary-btn:hover {
-    background: #2980b9;
-}
-
-.secondary-btn {
-    background: #7f8c8d;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.secondary-btn:hover {
-    background: #666;
-}
-
-.danger-btn {
-    background: #e74c3c;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 16px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-
-.danger-btn:hover {
-    background: #c0392b;
-}
-
-.alert {
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    font-size: 14px;
-}
-
-.alert.success {
-    background: #d4edda;
-    color: #155724;
-}
-
-.alert.error {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Menu Form */
-#menu-form-container {
-    display: none;
-    margin-bottom: 20px;
-}
-
-#menu-form-container.show {
-    display: block;
-}
-
-.menu-form {
-    background: #f9f9f9;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.menu-form h2 {
-    margin: 0 0 20px;
-    font-size: 22px;
-    color: #2c3e50;
-}
-
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 14px;
-    color: #2c3e50;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-    border-color: #3498db;
-    outline: none;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 100px;
-}
-
-.current-image {
-    margin-top: 10px;
-}
-
-.current-image img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 5px;
-}
-
-.form-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* Menu Items Table */
-.menu-items-container {
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-.admin-table th,
-.admin-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-}
-
-.admin-table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.menu-image-cell img {
-    max-width: 100px;
-    height: auto;
-    border-radius: 5px;
-}
-
-.no-image {
-    background: #f4f7f6;
-    padding: 10px;
-    border-radius: 5px;
-    text-align: center;
-    color: #7f8c8d;
-}
-
-.description-cell {
-    max-width: 300px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.action-link {
-    color: #3498db;
-    text-decoration: none;
-    font-size: 18px;
-    margin-right: 10px;
-    transition: color 0.3s;
-}
-
-.action-link.edit:hover {
-    color: #2980b9;
-}
-
-.action-link.delete {
-    color: #e74c3c;
-}
-
-.action-link.delete:hover {
-    color: #c0392b;
-}
-
-.no-items {
-    text-align: center;
-    color: #7f8c8d;
-    padding: 20px;
-}
-
-/* Delete Confirmation Modal */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    justify-content: center;
-    align-items: center;
-}
-
-.modal.show {
-    display: flex;
-}
-
-.modal-content {
-    background: #fff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    max-width: 400px;
-    width: 100%;
-}
-
-.modal-content h2 {
-    margin: 0 0 20px;
-    font-size: 22px;
-    color: #2c3e50;
-}
-
-.modal-content p {
-    margin: 0 0 20px;
-    font-size: 14px;
-    color: #7f8c8d;
-}
-
-.modal-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-}
-<style/>

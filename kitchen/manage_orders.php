@@ -219,7 +219,7 @@ $items_result = $conn->query($items_query);
     }
 
     .btn-primary {
-        background-color: ;
+        background-color: #e74c3c;
         color: #fff;
     }
 

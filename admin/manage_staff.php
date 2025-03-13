@@ -336,8 +336,7 @@ $conn->close();
             <a href="manage_staff.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'manage_staff.php' ? 'active' : ''; ?>"><i class="fas fa-users"></i> Manage Staff</a>
             
             <a href="view_sales_report.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'view_sales_report.php' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i> Sales Report</a>
-   
-            <a href="set_restaurant_branding.php" class="<?php echo basename($_SERVER['PHP_SELF']) == 'set_restaurant_branding.php' ? 'active' : ''; ?>"><i class="fas fa-palette"></i> Restaurant Branding</a>
+
             <a href="#" id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
         </nav>
     </div>
@@ -439,7 +438,7 @@ $conn->close();
         document.getElementById('logout-btn').addEventListener('click', function(e) {
             e.preventDefault();
             if(confirm('Are you sure you want to logout?')) {
-                window.location.href = 'logout.php';
+                window.location.href = 'admin_logout.php';
             }
         });
     </script>
