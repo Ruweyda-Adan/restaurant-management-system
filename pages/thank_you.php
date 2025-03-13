@@ -18,7 +18,7 @@ $order = $conn->query("SELECT * FROM orders WHERE id = $order_id")->fetch_assoc(
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Thank You Page Styles */
+        /* Styles */
         body {
             font-family: 'Poppins', sans-serif;
             background-color: #f9f9f9;

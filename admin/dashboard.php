@@ -101,7 +101,7 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
 
         /* Sidebar Styles */
         .admin-sidebar {
-            width: 250px; /* Fixed width for the sidebar */
+            width: 250px; 
             height: 100vh;
             background-color: #2c3e50;
             color: white;
@@ -153,10 +153,10 @@ $staff_count = $staff_result ? $staff_result->fetch_assoc()['count'] : 0;
 
         /* Main Content */
         .admin-content {
-            margin-left: 250px; /* Same as the sidebar width */
+            margin-left: 250px; 
             flex-grow: 1;
             padding: 20px;
-            width: calc(100% - 250px); /* Ensure content takes up remaining space */
+            width: calc(100% - 250px); 
         }
 
         /* Responsive Adjustments */

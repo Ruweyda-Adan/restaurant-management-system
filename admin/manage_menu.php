@@ -156,9 +156,9 @@ while ($row = $categories_result->fetch_assoc()) {
             min-height: 100vh;
         }
 
-        /* Sidebar Styles - Updated to match dashboard.php */
+        /* Sidebar Styles */
         .admin-sidebar {
-            width: 250px; /* Fixed width for the sidebar */
+            width: 250px; 
             height: 100vh;
             background-color: #2c3e50;
             color: white;
@@ -223,16 +223,16 @@ while ($row = $categories_result->fetch_assoc()) {
             }
         }
         
-        /* Content Styles - Adjusted to work with fixed sidebar */
+        /* Content Styles  */
         .admin-content {
-            margin-left: 250px; /* Same as the sidebar width */
+            margin-left: 250px; 
             flex-grow: 1;
             padding: 20px;
-            width: calc(100% - 250px); /* Ensure content takes up remaining space */
+            width: calc(100% - 250px); 
             background-color: #fff;
         }
         
-        /* Keep all other existing styles */
+        
         .admin-header {
             display: flex;
             justify-content: space-between;
@@ -502,7 +502,7 @@ while ($row = $categories_result->fetch_assoc()) {
 </head>
 <body>
     <div class="admin-container">
-        <!-- Updated Sidebar to match dashboard.php -->
+        <!--  Sidebar -->
         <div class="admin-sidebar">
             <div class="admin-logo">
                 <h2>Restaurant Admin</h2>
@@ -675,7 +675,7 @@ while ($row = $categories_result->fetch_assoc()) {
         
         document.getElementById('cancel-btn').addEventListener('click', function() {
             document.getElementById('menu-form-container').classList.remove('show');
-            window.location.href = 'manage_menu.php'; // Remove edit parameter
+            window.location.href = 'manage_menu.php'; 
         });
         
         // Delete confirmation
