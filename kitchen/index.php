@@ -33,7 +33,151 @@ $total_revenue = $conn->query("SELECT SUM(total_price) as total FROM orders")->f
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kitchen Staff Panel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">Restaurant Management</div>
+            <div class="user-nav">
+                <div class="user-info">
+                    <!-- User info here -->
+                </div>
+                <a href="logout.php" class="btn btn-danger">Logout</a>
+                <a href="change_password.php" class="btn btn-primary">Change Password</a>
+            </div>
+        </header>
+        
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <div class="icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3><?php echo $total_count; ?></h3>
+                <p>Total Orders</p>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3><?php echo $pending_count; ?></h3>
+                <p>Pending Orders</p>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3><?php echo $completed_count; ?></h3>
+                <p>Completed Orders</p>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <h3><?php echo $today_count; ?></h3>
+                <p>Today's Orders</p>
+            </div>
+            
+            <div class="stat-card">
+                <div class="icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <h3>KSh <?php echo number_format($total_revenue, 2); ?></h3>
+                <p>Total Revenue</p>
+            </div>
+        </div>
+        
+        <div class="orders-section">
+            <div class="section-header">
+                <h2 class="section-title">Recent Orders</h2>
+                <button class="refresh-btn" onclick="location.reload()">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            
+            <?php if ($result->num_rows > 0): ?>
+                <div class="table-responsive">
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Type</th>
+                                <th>Items</th>
+                                <th>Total</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Special Instructions</th> <!-- New Column -->
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $result->fetch_assoc()): ?>
+                                <tr>
+                                    <td class="order-id">#<?php echo $row['id']; ?></td>
+                                    <td><?php echo $row['customer_name']; ?></td>
+                                    <td>
+                                        <?php echo $row['order_type']; ?>
+                                        <?php if($row['table_number'] > 0): ?>
+                                            <small>(Table #<?php echo $row['table_number']; ?>)</small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo $row['item_count']; ?> items</td>
+                                    <td>KSh <?php echo number_format($row['total_price'], 2); ?></td>
+                                    <td><?php echo $row['formatted_time']; ?></td>
+                                    <td>
+                                        <span class="status status-<?php echo strtolower($row['status']); ?>">
+                                            <?php echo $row['status']; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($row['special_instructions'])): ?>
+                                            <div class="special-instructions">
+                                                <i class="fas fa-info-circle"></i>
+                                                <span><?php echo $row['special_instructions']; ?></span>
+                                            </div>
+                                        <?php else: ?>
+                                            <span class="no-instructions">No special instructions</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="actions">
+                                        <a href="receipt.php?order_id=<?php echo $row['id']; ?>" class="action-btn view">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <a href="manage_orders.php?order_id=<?php echo $row['id']; ?>" class="action-btn update">
+                                            <i class="fas fa-edit"></i> Manage
+                                        </a>
+                                        <a href="delete_order.php?order_id=<?php echo $row['id']; ?>" class="action-btn delete" 
+                                           onclick="return confirm('Are you sure you want to delete this order?');">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="empty-orders">
+                    <i class="fas fa-clipboard-list"></i>
+                    <p>No orders found</p>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <script>
+        // Auto refresh the page every 60 seconds to show new orders
+        setTimeout(function() {
+            location.reload();
+        }, 60000);
+    </script>
+</body>
+</html>
+
+<style>
         
         body {
             font-family: 'Poppins', sans-serif;
@@ -317,136 +461,3 @@ $total_revenue = $conn->query("SELECT SUM(total_price) as total FROM orders")->f
             }
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-            <div class="logo">Restaurant Management</div>
-            <div class="user-nav">
-                <div class="user-info">
-                    
-                </div>
-                <a href="logout.php" class="btn btn-danger">Logout</a>
-                <a href="change_password.php" class="btn btn-primary">Change Password</a>
-            </div>
-        
-        </header>
-        
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <div class="icon">
-                    <i class="fas fa-clipboard-list"></i>
-                </div>
-                <h3><?php echo $total_count; ?></h3>
-                <p>Total Orders</p>
-            </div>
-            
-            <div class="stat-card">
-                <div class="icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <h3><?php echo $pending_count; ?></h3>
-                <p>Pending Orders</p>
-            </div>
-            
-            <div class="stat-card">
-                <div class="icon">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <h3><?php echo $completed_count; ?></h3>
-                <p>Completed Orders</p>
-            </div>
-            
-            <div class="stat-card">
-                <div class="icon">
-                    <i class="fas fa-calendar-day"></i>
-                </div>
-                <h3><?php echo $today_count; ?></h3>
-                <p>Today's Orders</p>
-            </div>
-            
-            <div class="stat-card">
-                <div class="icon">
-                    <i class="fas fa-money-bill-wave"></i>
-                </div>
-                <h3>KSh <?php echo number_format($total_revenue, 2); ?></h3>
-                <p>Total Revenue</p>
-            </div>
-        </div>
-        
-        <div class="orders-section">
-            <div class="section-header">
-                <h2 class="section-title">Recent Orders</h2>
-                <button class="refresh-btn" onclick="location.reload()">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
-            
-            <?php if ($result->num_rows > 0): ?>
-                <div class="table-responsive">
-                    <table class="orders-table">
-                        <thead>
-                            <tr>
-                                <th>Order ID</th>
-                                <th>Customer</th>
-                                <th>Type</th>
-                                <th>Items</th>
-                                <th>Total</th>
-                                <th>Time</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php while($row = $result->fetch_assoc()): ?>
-                                <tr>
-                                    <td class="order-id">#<?php echo $row['id']; ?></td>
-                                    <td><?php echo $row['customer_name']; ?></td>
-                                    <td>
-                                        <?php echo $row['order_type']; ?>
-                                        <?php if($row['table_number'] > 0): ?>
-                                            <small>(Table #<?php echo $row['table_number']; ?>)</small>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?php echo $row['item_count']; ?> items</td>
-                                    <td>KSh <?php echo number_format($row['total_price'], 2); ?></td>
-                                    <td><?php echo $row['formatted_time']; ?></td>
-                                    <td>
-                                        <span class="status status-<?php echo strtolower($row['status']); ?>">
-                                            <?php echo $row['status']; ?>
-                                        </span>
-                                    </td>
-                                    <td class="actions">
-                                        <a href="receipt.php?order_id=<?php echo $row['id']; ?>" class="action-btn view">
-                                            <i class="fas fa-eye"></i> View
-                                        </a>
-                                        <a href="manage_orders.php?order_id=<?php echo $row['id']; ?>" class="action-btn update">
-                                            <i class="fas fa-edit"></i> Manage
-                                        </a>
-                                        <a href="delete_order.php?order_id=<?php echo $row['id']; ?>" class="action-btn delete" 
-                                           onclick="return confirm('Are you sure you want to delete this order?');">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <div class="empty-orders">
-                    <i class="fas fa-clipboard-list"></i>
-                    <p>No orders found</p>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-
-    <script>
-        // Auto refresh the page every 60 seconds to show new orders
-        setTimeout(function() {
-            location.reload();
-        }, 60000);
-    </script>
-</body>
-</html>

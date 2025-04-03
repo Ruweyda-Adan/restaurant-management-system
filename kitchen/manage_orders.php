@@ -11,6 +11,7 @@ if ($order_id <= 0) {
     exit;
 }
 
+
 // Fetch order details
 $order_query = "SELECT o.*, DATE_FORMAT(o.order_time, '%d %b %Y %h:%i %p') as formatted_time 
                 FROM orders o WHERE o.id = $order_id";
@@ -23,6 +24,16 @@ if ($order_result->num_rows == 0) {
 }
 
 $order = $order_result->fetch_assoc();
+
+// Fetch the order status
+$status = $order['status'];
+
+// Clear the session if the order is completed
+if ($status === 'Ready') {
+    if (isset($_SESSION['current_order_id']) && $_SESSION['current_order_id'] == $order_id) {
+        unset($_SESSION['current_order_id']);
+    }
+}
 
 // Fetch order items
 $items_query = "SELECT oi.*, mi.name, mi.price 

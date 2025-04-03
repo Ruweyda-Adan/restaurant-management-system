@@ -92,10 +92,12 @@ if (isset($_POST['action'])) {
         $customer_name = isset($_POST['customer_name']) ? trim($_POST['customer_name']) : '';
         $order_type = isset($_POST['order_type']) ? trim($_POST['order_type']) : 'Dine-in';
         $table_number = isset($_POST['table_number']) ? intval($_POST['table_number']) : 0;
+        $special_instructions = isset($_POST['special_instructions']) ? trim($_POST['special_instructions']) : '';
         
         error_log("Customer Name: $customer_name"); 
         error_log("Order Type: $order_type"); 
         error_log("Table Number: $table_number"); 
+        error_log("Special Instructions: $special_instructions"); 
 
         // Validates inputs
         if (empty($customer_name)) {
@@ -114,10 +116,10 @@ if (isset($_POST['action'])) {
             
             try {
                 // Inserts order
-                $order_sql = "INSERT INTO orders (customer_name, order_type, table_number, total_price, status) 
-                             VALUES (?, ?, ?, ?, 'Pending')";
+                $order_sql = "INSERT INTO orders (customer_name, order_type, table_number, total_price, status, special_instructions) 
+                             VALUES (?, ?, ?, ?, 'Pending', ?)";
                 $stmt = $conn->prepare($order_sql);
-                $stmt->bind_param("ssid", $customer_name, $order_type, $table_number, $total_price);
+                $stmt->bind_param("ssids", $customer_name, $order_type, $table_number, $total_price, $special_instructions);
                 $stmt->execute();
                 
                 $order_id = $conn->insert_id;
@@ -145,6 +147,10 @@ if (isset($_POST['action'])) {
                 
                 // Clears cart
                 $_SESSION['cart'] = [];
+                
+                // Store the order ID and table number in the session AFTER successful submission
+                $_SESSION['current_order_id'] = $order_id;
+                $_SESSION['table_number'] = $table_number;
                 
                 $response['success'] = true;
                 $response['message'] = 'Order submitted successfully';

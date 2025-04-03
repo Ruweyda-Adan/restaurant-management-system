@@ -19,6 +19,17 @@ while ($row = $categories_result->fetch_assoc()) {
     $categories[] = $row['category'];
 }
 
+// Check if the customer has an active order
+$current_order = null;
+if (isset($_SESSION['current_order_id'])) {
+    $order_id = $_SESSION['current_order_id'];
+    $current_order = $conn->query("SELECT * FROM orders WHERE id = $order_id AND status != 'Completed'")->fetch_assoc();
+}
+
+if ($current_order) {
+    $order_items = $conn->query("SELECT * FROM order_items WHERE order_id = $order_id")->fetch_all(MYSQLI_ASSOC);
+}
+
 // Filter by category 
 $category_filter = isset($_GET['category']) ? $_GET['category'] : '';
 $where_clause = "";
@@ -69,6 +80,15 @@ if ($category_filter) {
                 </a>
             </div>
         </header>
+
+        <!-- Display "View Order Details" button if there's an active order -->
+        <?php if ($current_order): ?>
+            <div class="view-order-container">
+                <a href="order_details.php?order_id=<?php echo $current_order['id']; ?>" class="view-order-btn">
+                    <i class="fas fa-receipt"></i> View Order Details
+                </a>
+            </div>
+        <?php endif; ?>
 
         <!-- Category Filter -->
         <div class="category-filter">
@@ -129,12 +149,11 @@ if ($category_filter) {
         <?php else: ?>
             <!-- Blank landing page -->
             <div class="blank-landing">
-                
-            
+                <div class="landing-hint">
+                    
+                </div>
             </div>
         <?php endif; ?>
-        
-        
     </div>
 
     <script src="../script.js"></script>
@@ -188,6 +207,11 @@ if ($category_filter) {
 </html>
 
 <style>
+/* Add your existing styles here */
+</style>
+
+<style>
+/* Add your existing styles here */
 body {
     font-family: 'Poppins', sans-serif;
     background-color: #f9f9f9;
@@ -455,5 +479,35 @@ body {
         font-size: 0.7rem;
         padding: 5px 8px;
     }
+}
+
+/* New styles for the "View Order Details" button */
+.view-order-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.view-order-btn {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #ff4757;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.view-order-btn:hover {
+    background-color: #ff6b81;
+    transform: translateY(-3px);
+}
+
+.view-order-btn:active {
+    transform: translateY(0);
+}
+
+.view-order-btn i {
+    margin-right: 8px;
 }
 </style>
